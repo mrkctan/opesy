@@ -1,6 +1,7 @@
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.concurrent.Semaphore;
 
 class Citizen {
     String type;
@@ -70,23 +71,33 @@ public class HelldiversSynchronization {
             superQueue.add(new Citizen("Super Citizen", i));
         }
 
+        Semaphore regularSemaphore = new Semaphore(1); // Semaphore for Regular Citizens queue
+        Semaphore superSemaphore = new Semaphore(2);   // Semaphore for Super Citizens queue
+
         while (!regularQueue.isEmpty() || !superQueue.isEmpty()) {
             Citizen[] teamMembers = new Citizen[4];
             int superCount = 0;
             int regularCount = 0;
 
-            // Form a team
-            for (int i = 0; i < 4; i++) {
-                if (superCount < 2 && !superQueue.isEmpty()) {
-                    teamMembers[i] = superQueue.poll();
-                    superCount++;
-                } else if (!regularQueue.isEmpty()) {
-                    teamMembers[i] = regularQueue.poll();
-                    regularCount++;
+            try {
+                superSemaphore.acquire();
+                regularSemaphore.acquire();
+                for (int i = 0; i < 4; i++) {
+                    if (superCount < 2 && !superQueue.isEmpty()) {
+                        teamMembers[i] = superQueue.poll();
+                        superCount++;
+                    } else if (!regularQueue.isEmpty()) {
+                        teamMembers[i] = regularQueue.poll();
+                        regularCount++;
+                    }
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                superSemaphore.release();
+                regularSemaphore.release();
             }
 
-            // Check if team is properly composed
             if (superCount >= 1 && regularCount >= 1) {
                 Team team = new Team(teamId++, teamMembers);
                 team.launchTeam();

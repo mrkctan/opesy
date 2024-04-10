@@ -1,120 +1,123 @@
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.Scanner;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
-class Citizen {
-    String type;
-    int id;
+class Shared {
+    static int regularCitizens;
+    static int superCitizens;
+    static int teamCount;
+    static int teamId;
+    static Semaphore mutex = new Semaphore(1);
+    static Semaphore superCitizenSem = new Semaphore(2);
+    static Semaphore regularCitizenSem = new Semaphore(4);
 
-    public Citizen(String type, int id) {
-        this.type = type;
-        this.id = id;
+    static void signUpRegular(int id) {
+        try {
+            regularCitizenSem.acquire();
+            mutex.acquire();
+            regularCitizens++;
+            System.out.println("Regular Citizen " + id + " is signing up");
+            mutex.release();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
-    public String getType() {
-        return type;
+    static void signUpSuper(int id) {
+        try {
+            superCitizenSem.acquire();
+            mutex.acquire();
+            superCitizens++;
+            System.out.println("Super Citizen " + id + " is signing up");
+            mutex.release();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
-    public int getId() {
-        return id;
-    }
-
-    @Override
-    public String toString() {
-        return type + " " + id;
+    static void formTeam() {
+        try {
+            mutex.acquire();
+            if (superCitizens >= 1 && regularCitizens >= 3) {
+                teamId++;
+                int superCount = 0;
+                int regularCount = 0;
+                for (int i = 0; i < 4; i++) {
+                    if (superCount < 2 && superCitizens > 0) {
+                        superCitizens--;
+                        superCount++;
+                        System.out.println("Super Citizen has joined team " + teamId);
+                    } else if (regularCitizens > 0) {
+                        regularCitizens--;
+                        regularCount++;
+                        System.out.println("Regular Citizen has joined team " + teamId);
+                    }
+                }
+                teamCount++;
+                System.out.println("Team " + teamId + " is ready and now launching to battle (sc: " + superCount + " | rc: " + regularCount + ")");
+            } else {
+                System.out.println("Not enough citizens to form a team.");
+            }
+            mutex.release();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            regularCitizenSem.release(4);
+            superCitizenSem.release(2);
+        }
     }
 }
 
-class Team {
-    int teamId;
-    Citizen[] citizens;
+class Citizen extends Thread {
+    private int id;
+    private boolean isSuper;
 
-    public Team(int teamId, Citizen[] citizens) {
-        this.teamId = teamId;
-        this.citizens = citizens;
+    Citizen(int id, boolean isSuper) {
+        this.id = id;
+        this.isSuper = isSuper;
     }
 
-    public void launchTeam() {
-        int superCount = 0;
-        int regularCount = 0;
-        for (Citizen citizen : citizens) {
-            if (citizen.getType().equals("Super Citizen")) {
-                superCount++;
-            } else {
-                regularCount++;
-            }
+    @Override
+    public void run() {
+        if (isSuper) {
+            Shared.signUpSuper(id);
+        } else {
+            Shared.signUpRegular(id);
         }
-        System.out.println("Team " + teamId + " is ready and now launching to battle (sc: " + superCount + " | rc: " + regularCount + ")");
+        Shared.formTeam();
     }
 }
 
 public class HelldiversSynchronization {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+        // Taking inputs for number of regular and super citizens
+        int r = 5;
+        int s = 4;
 
-        System.out.print("Enter the number of Regular Citizens (r): ");
-        int regularCitizens = scanner.nextInt();
-
-        System.out.print("Enter the number of Super Citizens (s): ");
-        int superCitizens = scanner.nextInt();
-
-        Queue<Citizen> regularQueue = new LinkedList<>();
-        Queue<Citizen> superQueue = new LinkedList<>();
-        int teamId = 1;
-
-        for (int i = 1; i <= regularCitizens; i++) {
-            regularQueue.add(new Citizen("Regular Citizen", i));
+        // Creating threads for citizens
+        Thread[] threads = new Thread[r + s];
+        for (int i = 0; i < s; i++) {
+            threads[i] = new Citizen(i + 1, true); // Super Citizens
+        }
+        for (int i = s; i < r + s; i++) {
+            threads[i] = new Citizen(i + 1, false); // Regular Citizens
         }
 
-        for (int i = 1; i <= superCitizens; i++) {
-            superQueue.add(new Citizen("Super Citizen", i));
+        // Starting all threads
+        for (Thread t : threads) {
+            t.start();
         }
 
-        Semaphore regularSemaphore = new Semaphore(1); // Semaphore for Regular Citizens queue
-        Semaphore superSemaphore = new Semaphore(2);   // Semaphore for Super Citizens queue
-
-        while (!regularQueue.isEmpty() || !superQueue.isEmpty()) {
-            Citizen[] teamMembers = new Citizen[4];
-            int superCount = 0;
-            int regularCount = 0;
-
+        // Joining all threads
+        for (Thread t : threads) {
             try {
-                superSemaphore.acquire();
-                regularSemaphore.acquire();
-                for (int i = 0; i < 4; i++) {
-                    if (superCount < 2 && !superQueue.isEmpty()) {
-                        teamMembers[i] = superQueue.poll();
-                        superCount++;
-                    } else if (!regularQueue.isEmpty()) {
-                        teamMembers[i] = regularQueue.poll();
-                        regularCount++;
-                    }
-                }
+                t.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            } finally {
-                superSemaphore.release();
-                regularSemaphore.release();
-            }
-
-            if (superCount >= 1 && regularCount >= 1) {
-                Team team = new Team(teamId++, teamMembers);
-                team.launchTeam();
-            } else {
-                // Not enough citizens to form a team
-                break;
             }
         }
 
-        int remainingRegular = regularQueue.size();
-        int remainingSuper = superQueue.size();
-        int totalTeams = teamId - 1;
-
-        System.out.println("Total teams sent: " + totalTeams);
-        System.out.println("Remaining Regular Citizens: " + remainingRegular);
-        System.out.println("Remaining Super Citizens: " + remainingSuper);
-
-        scanner.close();
+        // After all threads finish, displaying summary
+        System.out.println("\nTotal Teams Sent: " + Shared.teamCount);
+        System.out.println("Remaining Regular Citizens: " + Shared.regularCitizens);
+        System.out.println("Remaining Super Citizens: " + Shared.superCitizens);
     }
 }

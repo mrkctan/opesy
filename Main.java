@@ -84,7 +84,7 @@ public class Main{
         if(totalCitizens < 4){
             return false;
         }
-        if(superCitizenCount < 2 && regularCitizenCount < 3){
+        if(superCitizenCount < 2 && regularCitizenCount < 2){
             return false;
         }
         if(superCitizenCount == 0 || regularCitizenCount == 0){
@@ -92,6 +92,9 @@ public class Main{
         }
         if(regularCitizenCount < 2){
             return false;
+        }
+        if(superCitizenCount < 2 && regularCitizenCount < 4){
+            return true;
         }
         return true;
     }
@@ -194,6 +197,9 @@ public class Main{
                         totalCitizens -= 4;
                         currTeam = new Team(teamCount);
                         teamCount ++;
+                    } else {
+                        // If it cannot form a team, the thread should exit
+                        System.out.println("Thread " + id + " cannot form a team and exits.");
                     }
                 }
                 mutexCount++;
@@ -216,6 +222,7 @@ public class Main{
                     }
                 }
             }catch(InterruptedException e){
+                e.printStackTrace();
             }
         }
     }

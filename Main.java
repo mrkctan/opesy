@@ -3,36 +3,39 @@
 import java.util.Scanner;
 import java.util.concurrent.Semaphore;
 
-
+//This defines the class to represent a team of Helldivers
 public class Main{
     static class Team {
-        int teamId;
-        int totalMembers = 0;
-        int superCitizenCount = 0;
-        int regularCitizenCount = 0;
-        public Team(int teamId) {
+        int teamId; //Uniquely identify each team created
+        int totalMembers = 0; //Total number of members in the team
+        int superCitizenCount = 0; //Number of Super Citizens
+        int regularCitizenCount = 0; //Number of regular Citizens
+        public Team(int teamId) { 
             this.teamId = teamId;
         }
+        //Method to add a citizen to the team
         public void addMember(Citizen citizen){
-            System.out.println(citizen.type + "Citizen " + citizen.id + " has joined team " + teamId);
+            System.out.println(citizen.type + "Citizen " + citizen.id + " has joined team " + teamId); //Display message indicating a citizen has joined the team
             if(citizen.getType().equals("Super")){
-                superCitizenCount ++;
+                superCitizenCount ++; 
                 System.out.println("Team " + this.teamId + " Super count: " + this.superCitizenCount);
             }
             else{
                 regularCitizenCount++;
                 System.out.println("Team " + this.teamId + " Regular count: " + this.regularCitizenCount);
             }
-            totalMembers++;
+            totalMembers++; //Increment the total number of members in the team
         }
 
+        //Method to launch the team into battle
         public void launchTeam() {
-            int superCount = superCitizenCount;
-            int regularCount = regularCitizenCount;
+            int superCount = superCitizenCount; //current count of supercitizens in team
+            int regularCount = regularCitizenCount; //current count of regular citizens in team
             System.out.println("Team " + teamId + " is ready and now launching to battle (sc: " + superCount + " | rc: " + regularCount + ")");
             System.out.println("Total members: " + this.totalMembers);
         }
 
+        //Method to check if the team is full (has 4 members)
         public Boolean isFull(){
             if(totalMembers >= 4){
                 return true;
@@ -40,6 +43,7 @@ public class Main{
             return false;
         }
 
+        //Method to determine the type of citizen required to complete the team
         public String requires(){
             if(this.superCitizenCount == 2){
                 return "Regular";
@@ -51,6 +55,7 @@ public class Main{
             return "Any";
         }
 
+        //Method to check if a Super Citizen can be recruited to the team
         public Boolean canRecruitSuper(){
             if(this.superCitizenCount < 2){
                 return true;
@@ -59,6 +64,7 @@ public class Main{
             return false;
         }
 
+        //Method to check if a regular citizen can be recruited to the team
         public Boolean canRecruitRegular(){
             switch(this.superCitizenCount){
                 case 0:
@@ -75,31 +81,40 @@ public class Main{
             return false;
         }
 
+        //Method to get the count of Super Citizens in the team
         public int getSuperCount(){
             return superCitizenCount;
         }
 
+        //Method to get the count of Regular Citizens in the team
         public int getRegularCount(){
             return regularCitizenCount;
         }
     }
 
+    //Check if it's still possible to form teams based on the given counts of citizens
     public static Boolean canStillFormTeams(int totalCitizens, int superCitizenCount, int regularCitizenCount){
+        // If there are fewer than 4 citizens, teams cannot be formed
         if(totalCitizens < 4){
             return false;
         }
+        // If there are not enough Super and Regular Citizens to form teams, return false
         if(superCitizenCount < 2 && regularCitizenCount < 2){
             return false;
         }
+        // If there are no Super Citizens or no Regular Citizens, return false
         if(superCitizenCount == 0 || regularCitizenCount == 0){
             return false;
         }
+        // If there are fewer than 2 Regular Citizens, return false
         if(regularCitizenCount < 2){
             return false;
         }
+        // If there are fewer than 2 Super Citizens and fewer than 4 Regular Citizens, return true
         if(superCitizenCount < 2 && regularCitizenCount < 4){
             return true;
         }
+        // Otherwise, return true (teams can still be formed)
         return true;
     }
     
@@ -168,9 +183,7 @@ public class Main{
                             superWaitQueue.acquire();
                             
                             System.out.println(getThreadName() + " wakes up from super queue. (Can join context.)");
-                            if (canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)) {
-                                currTeam.addMember(this);
-                            }
+                            currTeam.addMember(this);
                         }
                         else{
                             System.out.println(getThreadName() + " waits in the super queue. (Can't join context)");
@@ -205,9 +218,7 @@ public class Main{
                             regularWaitQueue.release();
                             regularWaitQueue.acquire();
                             System.out.println(getThreadName() + " wakes up from regular queue. (Can join context)");
-                            if (canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)) {
-                                currTeam.addMember(this);
-                            }
+                            currTeam.addMember(this);
                         }
                         else{
                             System.out.println(getThreadName() + "waits in the regular queue. (Can't join context)");

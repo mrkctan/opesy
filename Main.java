@@ -168,7 +168,9 @@ public class Main{
                             superWaitQueue.acquire();
                             
                             System.out.println(getThreadName() + " wakes up from super queue. (Can join context.)");
-                            currTeam.addMember(this);
+                            if (canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)) {
+                                currTeam.addMember(this);
+                            }
                         }
                         else{
                             System.out.println(getThreadName() + " waits in the super queue. (Can't join context)");
@@ -203,7 +205,9 @@ public class Main{
                             regularWaitQueue.release();
                             regularWaitQueue.acquire();
                             System.out.println(getThreadName() + " wakes up from regular queue. (Can join context)");
-                            currTeam.addMember(this);
+                            if (canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)) {
+                                currTeam.addMember(this);
+                            }
                         }
                         else{
                             System.out.println(getThreadName() + "waits in the regular queue. (Can't join context)");
